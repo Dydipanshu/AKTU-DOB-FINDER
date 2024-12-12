@@ -198,5 +198,5 @@ async function main(rollNumbers) {
     }
 }
 
-const rollNumbersToSearch = ["2200910200009","2300910000024","invalid","2200910200042"];
+const rollNumbersToSearch = ["Enter roll number here"];
 main(rollNumbersToSearch);
