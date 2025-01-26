@@ -1,0 +1,7 @@
+# Compiled files
+dist/
+*.js
+
+# Environment files
+.env
+node_modules/

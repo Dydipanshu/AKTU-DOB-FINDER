@@ -1,66 +1,87 @@
-# AKTU Student Information Scraper
-=====================================
+# AKTU OneView DOB Finder 🔍
 
-## Overview
+[![Node.js](https://img.shields.io/badge/Node.js-20.x-green?logo=node.js)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7.x-green?logo=mongodb)](https://www.mongodb.com/)
+[![GitHub License](https://img.shields.io/github/license/Dydipanshu/AKTU-DOB-FINDER)](https://github.com/Dydipanshu/AKTU-DOB-FINDER/blob/main/LICENSE)
 
-This project is a web scraper designed to extract student information from the Abdul Kalam Technical University (AKTU) website. The scraper uses a combination of HTTP requests and HTML parsing to retrieve student data, including roll numbers, names, and dates of birth.
+**Repository**: [https://github.com/Dydipanshu/AKTU-DOB-FINDER](https://github.com/Dydipanshu/AKTU-DOB-FINDER)
 
-## Features
+A secure TypeScript solution to find AKTU student details while maintaining privacy and data protection.
 
-* **Efficient Data Retrieval**: The scraper uses a optimized algorithm to retrieve student data, minimizing the number of HTTP requests and reducing the load on the AKTU website.
-* **Flexible Data Extraction**: The scraper can extract a wide range of student data, including roll numbers, names, and dates of birth.
-* **Error Handling**: The scraper includes robust error handling to ensure that it can recover from common errors, such as network failures and HTML parsing errors.
-* **Modular Design**: The scraper is designed with a modular architecture, making it easy to add new features and modify existing ones.
+![Workflow Diagram](https://i.imgur.com/mV8pD5a.png)
 
-## Technical Details
+## Security First 🔒
+- `.env` file gitignored by default
+- Database credentials via environment variables
+- No hardcoded sensitive information
+- Random User-Agent rotation
+- Rate-limited requests
 
-* **Programming Language**: The scraper is written in JavaScript using the Node.js runtime environment.
-* **Dependencies**: The scraper uses the following dependencies:
-	+ `axios` for making HTTP requests
-	+ `cheerio` for parsing HTML
-	+ `qs` for handling URL query strings
-
-## Installation
-
-To use the scraper, you will need to install the following dependencies:
-
-* `axios`: `npm install axios`
-* `cheerio`: `npm install cheerio`
-* `qs`: `npm install qs`
-
-## Usage
-
-To use the scraper, simply clone the repository and run the following command:
+## Installation 💻
 ```bash
-node main.js
+git clone https://github.com/Dydipanshu/AKTU-DOB-FINDER.git
+cd AKTU-DOB-FINDER
+npm install
+cp .env.example .env
 ```
-This will start the scraper and begin extracting student data from the AKTU website.
 
-## Example Output
+## Configuration ⚙️
+Edit `.env` file:
+```env
+MONGO_DB_URI=""
+DATABASE_NAME = ""
+VIEWSTATE = ""
+VIEWSTATEGENERATOR = ""
+EVENTVALIDATION = ""
 
-The scraper produces a JSON output containing the extracted student data. Here's an example of what the output might look like:
-```json
-[
-  {
-    "rollNumber": "2200140200009",
-    "name": "John Doe",
-    "dob": "1995-01-01"
-  },
-  {
-    "rollNumber": "2300140000026",
-    "name": "Jane Doe",
-    "dob": "1996-02-02"
-  }
-]
 ```
-## Future Development
 
-There are several ways to improve the scraper, including:
+## Usage 🚀
+```bash
+# Build project
+npm run build
 
-* **Adding support for additional data fields**: The scraper currently only extracts roll numbers, names, and dates of birth. Adding support for additional data fields, such as addresses and phone numbers, could make the scraper more useful.
-* **Improving error handling**: While the scraper includes robust error handling, there may be additional errors that could be handled more elegantly.
-* **Optimizing performance**: The scraper could be optimized for performance by using more efficient algorithms or by parallelizing the data extraction process.
+# Run scraper
+npm start
+```
 
-## Contributing
+## Project Structure 🗂️
+```
+AKTU-DOB-FINDER/
+├── src/
+│   ├── config/        # Environment config
+│   ├── database/      # MongoDB operations
+│   ├── scraping/      # Web scraping logic
+│   ├── utils/         # Helper functions
+│   ├── interfaces/    # Type definitions
+│   └── main.ts        # Entry point
+├── .env.example       # Env template
+├── tsconfig.json      # TS config
+└── package.json       # Dependencies
+```
 
-Contributions are welcome! If you'd like to contribute to the scraper, please fork the repository and submit a pull request with your changes.
+## Scripts 📜
+```bash
+npm run build   # Compile TS to JS
+npm start       # Run application
+npm run clean   # Remove build artifacts
+```
+
+## Contributing 🤝
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/your-feature`
+3. Commit changes: `git commit -m "feat: add feature"`
+4. Push: `git push origin feature/your-feature`
+5. Open a Pull Request
+
+## License 📄
+MIT License - See [LICENSE](https://github.com/Dydipanshu/AKTU-DOB-FINDER/blob/main/LICENSE)
+
+## Disclaimer ⚠️
+This tool is for educational purposes only. Ensure compliance with:
+- AKTU website terms of service
+- Data protection laws (GDPR, CCPA)
+- Ethical hacking guidelines
+
+**Never use this to access data without proper authorization**
